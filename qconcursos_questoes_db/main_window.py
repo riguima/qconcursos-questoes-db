@@ -58,7 +58,7 @@ class MainWindow(QtWidgets.QWidget):
             folder = Path(self.destination_folder_input.text())
         else:
             folder = Path('.')
-        with open(folder / 'db.txt', 'w') as f:
+        with open(folder / 'db.txt', 'w', encoding='utf-8') as f:
             for question in [e for e in result if not e['Tem Imagens']]:
                 for key, value in question.items():
                     if key == 'Tem Imagens':

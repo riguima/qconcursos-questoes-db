@@ -2,7 +2,6 @@ import re
 import string
 from time import sleep
 
-from rich import print
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import Chrome
 from selenium.webdriver.chrome.options import Options
@@ -24,6 +23,7 @@ class Browser:
         self.driver = Chrome(
             service=Service(ChromeDriverManager().install()), options=options
         )
+        self.driver.maximize_window()
 
     def make_login(self):
         self.driver.get('https://www.qconcursos.com/conta/entrar')
@@ -71,16 +71,19 @@ class Browser:
                         '.js-question-right-answer', element=question
                     ).get_attribute('textContent')
                 else:
-                    option = self.find_element(
-                        '.q-option-item', element=question
-                    ).get_attribute('textContent')
-                    answer = (
-                        option
-                        if option
-                        else self.find_element('.q-item-enum').get_attribute(
-                            'textContent'
+                    if len(self.find_elements('.q-option-item', element=question)) == 2:
+                        answer = 'Certo'
+                    else:
+                        option = self.find_element(
+                            '.q-option-item', element=question
+                        ).get_attribute('textContent')
+                        answer = (
+                            option
+                            if option
+                            else self.find_element('.q-item-enum').get_attribute(
+                                'textContent'
+                            )
                         )
-                    )
                 infos = [
                     ':'.join(
                         e.get_attribute('textContent').split(':')[1:]
@@ -135,7 +138,6 @@ class Browser:
                         or '(A) \n(B)' in alternatives,
                     }
                 )
-                print(result[-1])
             try:
                 self.driver.execute_script(
                     'arguments[0].click()', self.find_element('.q-next')
