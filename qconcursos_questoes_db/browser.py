@@ -82,21 +82,43 @@ class Browser:
                         )
                     )
                 infos = [
-                    ':'.join(e.get_attribute('textContent').split(':')[1:]).strip()
+                    ':'.join(
+                        e.get_attribute('textContent').split(':')[1:]
+                    ).strip()
                     for e in self.find_elements(
                         '.q-question-info span', element=question
                     )
                 ]
-                question_text = self.find_element('.q-question-enunciation', element=question).get_attribute('textContent').strip()
+                question_text = (
+                    self.find_element(
+                        '.q-question-enunciation', element=question
+                    )
+                    .get_attribute('textContent')
+                    .strip()
+                )
                 alternatives = '\n'
-                for e, element in enumerate(self.find_elements('.js-alternative-content', element=question)):
-                    if e == len(self.find_elements('.q-option-item', element=question)) - 1:
+                for e, element in enumerate(
+                    self.find_elements(
+                        '.js-alternative-content', element=question
+                    )
+                ):
+                    if (
+                        e
+                        == len(
+                            self.find_elements(
+                                '.q-option-item', element=question
+                            )
+                        )
+                        - 1
+                    ):
                         alternatives += f'({string.ascii_uppercase[e]}) {element.get_attribute("textContent").strip()}'
                     else:
                         alternatives += f'({string.ascii_uppercase[e]}) {element.get_attribute("textContent").strip()}\n'
                 result.append(
                     {
-                        'Número': self.find_element('.q-id').get_attribute('textContent').strip(),
+                        'Número': self.find_element('.q-id', element=question)
+                        .get_attribute('textContent')
+                        .strip(),
                         'Questão': re.sub(r'[ ]{2,}', ' ', question_text),
                         'Alternativas': alternatives,
                         'Resposta': answer,
@@ -105,12 +127,19 @@ class Browser:
                         'Banca': infos[1],
                         'Órgão': infos[2],
                         'Prova': re.sub(r'\s+\|$', '', infos[3]),
+                        'Tem Imagens': bool(
+                            question.find_elements(
+                                By.CSS_SELECTOR, '.q-question-enunciation img'
+                            )
+                        )
+                        or '(A) \n(B)' in alternatives,
                     }
                 )
                 print(result[-1])
-            break
             try:
-                self.driver.execute_script('arguments[0].click()', self.find_element('.q-next'))
+                self.driver.execute_script(
+                    'arguments[0].click()', self.find_element('.q-next')
+                )
                 sleep(10)
             except TimeoutException:
                 break

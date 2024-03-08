@@ -59,10 +59,10 @@ class MainWindow(QtWidgets.QWidget):
         else:
             folder = Path('.')
         with open(folder / 'db.txt', 'w') as f:
-            for question in result:
+            for question in [e for e in result if not e['Tem Imagens']]:
                 for key, value in question.items():
-                    if key == 'Alternativas' and '(A) \n(B)' in value:
-                        f.write('Alternativas com imagens\n\n')
+                    if key == 'Tem Imagens':
+                        continue
                     if key == 'Questão':
                         f.write(f'{key}:\n{value}\n\n')
                     else:
@@ -70,10 +70,11 @@ class MainWindow(QtWidgets.QWidget):
                 f.write('=' * 50)
                 f.write('\n\n')
             f.write('Gabarito:\n\n')
-            for question in result:
-                if '(A) \n(B)' in question['Alternativas']:
-                    f.write(f'{question["Número"]} - {question["Resposta"]} (Alternativas com imagens)\n')
-                else:
+            for question in [e for e in result if not e['Tem Imagens']]:
+                f.write(f'{question["Número"]} - {question["Resposta"]}\n')
+            if [e for e in result if e['Tem Imagens']]:
+                f.write('\nQuestões com imagens:\n\n')
+                for question in [e for e in result if e['Tem Imagens']]:
                     f.write(f'{question["Número"]} - {question["Resposta"]}\n')
         self.message_box.setText('Finalizado!')
         self.message_box.show()
