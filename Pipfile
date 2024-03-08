@@ -8,6 +8,8 @@ pyside6 = "*"
 selenium = "*"
 webdriver-manager = "*"
 qt-material = "*"
+toml = "*"
+rich = "*"
 
 [dev-packages]
 blue = "*"
