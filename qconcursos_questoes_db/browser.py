@@ -117,6 +117,10 @@ class Browser:
                         alternatives += f'({string.ascii_uppercase[e]}) {element.get_attribute("textContent").strip()}'
                     else:
                         alternatives += f'({string.ascii_uppercase[e]}) {element.get_attribute("textContent").strip()}\n'
+                try:
+                    proof = re.sub(r'\s+\|$', '', infos[3])
+                except IndexError:
+                    proof = ''
                 result.append(
                     {
                         'Número': self.find_element('.q-id', element=question)
@@ -129,7 +133,7 @@ class Browser:
                         'Ano': infos[0],
                         'Banca': infos[1],
                         'Órgão': infos[2],
-                        'Prova': re.sub(r'\s+\|$', '', infos[3]),
+                        'Prova': proof,
                         'Tem Imagens': bool(
                             question.find_elements(
                                 By.CSS_SELECTOR, '.q-question-enunciation img'
