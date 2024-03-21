@@ -2,7 +2,7 @@ from itertools import count
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from sqlalchemy import select
 
 from qconcursos_questoes_db.browser import Browser
@@ -140,13 +140,16 @@ class MainWindow(QtWidgets.QWidget):
             self.login_input.text(), self.password_input.text()
         )
         for page in count(int(self.page_input.text())):
-            self.browser.driver.get(f'{self.url_input.text()}&page={page}')
-            while True:
-                try:
-                    result = self.browser.get_questions()
-                    break
-                except StaleElementReferenceException:
-                    continue
+            try:
+                while True:
+                    try:
+                        self.browser.driver.get(f'{self.url_input.text()}&page={page}')
+                        result = self.browser.get_questions()
+                        break
+                    except StaleElementReferenceException:
+                        continue
+            except TimeoutException:
+                break
             for question in result:
                 session = Session()
                 query = select(Question).where(
@@ -178,13 +181,16 @@ class MainWindow(QtWidgets.QWidget):
         )
         result = []
         for page in count(int(self.page_input.text())):
-            self.browser.driver.get(f'{self.url_input.text()}&page={page}')
-            while True:
-                try:
-                    result.extend(self.browser.get_questions())
-                    break
-                except StaleElementReferenceException:
-                    continue
+            try:
+                while True:
+                    try:
+                        self.browser.driver.get(f'{self.url_input.text()}&page={page}')
+                        result.extend(self.browser.get_questions())
+                        break
+                    except StaleElementReferenceException:
+                        continue
+            except TimeoutException:
+                break
         if self.destination_folder_input.text():
             folder = Path(self.destination_folder_input.text())
         else:
