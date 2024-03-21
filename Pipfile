@@ -10,6 +10,9 @@ webdriver-manager = "*"
 qt-material = "*"
 toml = "*"
 rich = "*"
+cx-freeze = "*"
+sqlalchemy = "*"
+mysql-connector-python = "*"
 
 [dev-packages]
 blue = "*"
