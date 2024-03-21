@@ -6,6 +6,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 from sqlalchemy import select
 
 from qconcursos_questoes_db.browser import Browser
+from qconcursos_questoes_db.config import config
 from qconcursos_questoes_db.database import Session
 from qconcursos_questoes_db.models import Question
 
@@ -13,7 +14,7 @@ from qconcursos_questoes_db.models import Question
 class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.setFixedSize(1000, 250)
+        self.setFixedSize(1000, 300)
         with open('styles.qss', 'r') as f:
             self.setStyleSheet(f.read())
 
@@ -23,12 +24,14 @@ class MainWindow(QtWidgets.QWidget):
 
         self.login_label = QtWidgets.QLabel('Login')
         self.login_input = QtWidgets.QLineEdit()
+        self.login_input.setText(config['LOGIN'])
         self.login_layout = QtWidgets.QHBoxLayout()
         self.login_layout.addWidget(self.login_label)
         self.login_layout.addWidget(self.login_input)
 
         self.password_label = QtWidgets.QLabel('Senha')
         self.password_input = QtWidgets.QLineEdit()
+        self.password_input.setText(config['PASSWORD'])
         self.password_layout = QtWidgets.QHBoxLayout()
         self.password_layout.addWidget(self.password_label)
         self.password_layout.addWidget(self.password_input)
@@ -76,7 +79,13 @@ class MainWindow(QtWidgets.QWidget):
         self.scraping_layout.addWidget(self.generate_db_button)
         self.scraping_layout.addWidget(self.generate_db_txt_button)
 
-        self.subject_label = QtWidgets.QLabel('Disciplina')
+        self.discipline_label = QtWidgets.QLabel('Disciplina')
+        self.discipline_combobox = QtWidgets.QComboBox()
+        self.discipline_layout = QtWidgets.QHBoxLayout()
+        self.discipline_layout.addWidget(self.discipline_label)
+        self.discipline_layout.addWidget(self.discipline_combobox)
+
+        self.subject_label = QtWidgets.QLabel('Assunto')
         self.subject_combobox = QtWidgets.QComboBox()
         self.subject_layout = QtWidgets.QHBoxLayout()
         self.subject_layout.addWidget(self.subject_label)
@@ -100,10 +109,13 @@ class MainWindow(QtWidgets.QWidget):
         self.year_layout.addWidget(self.year_label)
         self.year_layout.addWidget(self.year_combobox)
 
-        self.generate_txt_button = QtWidgets.QPushButton('Gerar DB TXT do banco')
+        self.generate_txt_button = QtWidgets.QPushButton(
+            'Gerar DB TXT do banco'
+        )
         self.generate_txt_button.clicked.connect(self.generate_db_txt_from_db)
 
         self.generate_txt_layout = QtWidgets.QVBoxLayout()
+        self.generate_txt_layout.addLayout(self.discipline_layout)
         self.generate_txt_layout.addLayout(self.subject_layout)
         self.generate_txt_layout.addLayout(self.banking_layout)
         self.generate_txt_layout.addLayout(self.organ_layout)
@@ -137,7 +149,6 @@ class MainWindow(QtWidgets.QWidget):
                     continue
             for question in result:
                 session = Session()
-                print(question['Número'])
                 query = select(Question).where(
                     Question.numero == question['Número']
                 )
@@ -157,7 +168,6 @@ class MainWindow(QtWidgets.QWidget):
                     session.add(question_model)
                     session.commit()
                 session.close()
-            print('Pagina:', page)
         self.message_box.setText('Finalizado!')
         self.message_box.show()
 
@@ -169,15 +179,12 @@ class MainWindow(QtWidgets.QWidget):
         result = []
         for page in count(int(self.page_input.text())):
             self.browser.driver.get(f'{self.url_input.text()}&page={page}')
-            try:
-                while True:
-                    try:
-                        result.extend(self.browser.get_questions())
-                        break
-                    except StaleElementReferenceException:
-                        continue
-            except:
-                break
+            while True:
+                try:
+                    result.extend(self.browser.get_questions())
+                    break
+                except StaleElementReferenceException:
+                    continue
         if self.destination_folder_input.text():
             folder = Path(self.destination_folder_input.text())
         else:
@@ -201,8 +208,9 @@ class MainWindow(QtWidgets.QWidget):
                 f.write('\nQuestões com imagens:\n\n')
                 for question in result:
                     if question['Imagens']:
-                        f.write(f'{question["Número"]} - {question["Resposta"]}\n')
-            print('Pagina:', page)
+                        f.write(
+                            f'{question["Número"]} - {question["Resposta"]}\n'
+                        )
         self.message_box.setText('Finalizado!')
         self.message_box.show()
 
@@ -210,10 +218,6 @@ class MainWindow(QtWidgets.QWidget):
     def generate_db_txt_from_db(self):
         session = Session()
         query = select(Question)
-        if self.subject_combobox.currentText() != 'Todas':
-            query = query.where(
-                Question.materia == self.subject_combobox.currentText()
-            )
         if self.banking_combobox.currentText() != 'Todas':
             query = query.where(
                 Question.banca == self.banking_combobox.currentText()
@@ -234,6 +238,19 @@ class MainWindow(QtWidgets.QWidget):
             for question in session.scalars(
                 query.where(Question.imagens == '')
             ).all():
+                discipline = self.discipline_combobox.currentText()
+                if (
+                    discipline != 'Todas'
+                    and discipline.lower() not in question.materia.lower()
+                ):
+                    continue
+                subject = self.subject_combobox.currentText()
+                if (
+                    discipline != 'Todas'
+                    and subject != 'Todas'
+                    and subject.lower() not in question.materia.lower()
+                ):
+                    continue
                 f.write(
                     f'Questão {question.numero}. ({question.banca} - {question.orgao} - {question.prova} - {question.ano} - {question.materia})\n'
                 )
@@ -260,10 +277,23 @@ class MainWindow(QtWidgets.QWidget):
     def update_comboboxes(self):
         session = Session()
         questions = session.scalars(select(Question)).all()
+        self.discipline_combobox.clear()
+        self.discipline_combobox.addItem('Todas')
+        self.discipline_combobox.addItems(
+            list(set([q.materia.split('-')[0].strip() for q in questions]))
+        )
         self.subject_combobox.clear()
         self.subject_combobox.addItem('Todas')
         self.subject_combobox.addItems(
-            list(set([q.materia for q in questions]))
+            list(
+                set(
+                    [
+                        ' - '.join(q.materia.split(' - ')[1:]).strip()
+                        for q in questions
+                        if len(q.materia.split(' - ')) > 1
+                    ]
+                )
+            )
         )
         self.banking_combobox.clear()
         self.banking_combobox.addItem('Todas')
