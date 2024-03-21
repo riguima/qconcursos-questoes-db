@@ -64,6 +64,9 @@ class MainWindow(QtWidgets.QWidget):
         self.generate_db_button = QtWidgets.QPushButton('Gerar DB')
         self.generate_db_button.clicked.connect(self.generate_db)
 
+        self.generate_db_txt_button = QtWidgets.QPushButton('Gerar DB TXT')
+        self.generate_db_txt_button.clicked.connect(self.generate_db_txt)
+
         self.scraping_layout = QtWidgets.QVBoxLayout()
         self.scraping_layout.addLayout(self.login_layout)
         self.scraping_layout.addLayout(self.password_layout)
@@ -71,6 +74,7 @@ class MainWindow(QtWidgets.QWidget):
         self.scraping_layout.addLayout(self.url_layout)
         self.scraping_layout.addLayout(self.page_layout)
         self.scraping_layout.addWidget(self.generate_db_button)
+        self.scraping_layout.addWidget(self.generate_db_txt_button)
 
         self.subject_label = QtWidgets.QLabel('Disciplina')
         self.subject_combobox = QtWidgets.QComboBox()
@@ -96,8 +100,8 @@ class MainWindow(QtWidgets.QWidget):
         self.year_layout.addWidget(self.year_label)
         self.year_layout.addWidget(self.year_combobox)
 
-        self.generate_txt_button = QtWidgets.QPushButton('Gerar DB TXT')
-        self.generate_txt_button.clicked.connect(self.generate_db_txt)
+        self.generate_txt_button = QtWidgets.QPushButton('Gerar DB TXT do banco')
+        self.generate_txt_button.clicked.connect(self.generate_db_txt_from_db)
 
         self.generate_txt_layout = QtWidgets.QVBoxLayout()
         self.generate_txt_layout.addLayout(self.subject_layout)
@@ -159,6 +163,51 @@ class MainWindow(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def generate_db_txt(self):
+        self.browser.make_login(
+            self.login_input.text(), self.password_input.text()
+        )
+        result = []
+        for page in count(int(self.page_input.text())):
+            self.browser.driver.get(f'{self.url_input.text()}&page={page}')
+            try:
+                while True:
+                    try:
+                        result.extend(self.browser.get_questions())
+                        break
+                    except StaleElementReferenceException:
+                        continue
+            except:
+                break
+        if self.destination_folder_input.text():
+            folder = Path(self.destination_folder_input.text())
+        else:
+            folder = Path('.')
+        with open(folder / 'db.txt', 'w', encoding='utf-8') as f:
+            for question in result:
+                if not question['Imagens']:
+                    f.write(
+                        f'Questão {question["Número"]}. ({question["Banca"]} - {question["Órgão"]} - {question["Prova"]} - {question["Ano"]} - {question["Matéria"]})\n'
+                    )
+                    f.write(question['Questão'] + '\n\n')
+                    f.write(f'Alternativas:\n{question["Alternativas"]}\n\n')
+                    f.write(f'Resposta: {question["Resposta"]}\n\n')
+                    f.write('=' * 50)
+                    f.write('\n\n')
+            f.write('Gabarito:\n\n')
+            for question in result:
+                if not question['Imagens']:
+                    f.write(f'{question["Número"]} - {question["Resposta"]}\n')
+            if [e for e in result if e['Imagens']]:
+                f.write('\nQuestões com imagens:\n\n')
+                for question in result:
+                    if question['Imagens']:
+                        f.write(f'{question["Número"]} - {question["Resposta"]}\n')
+            print('Pagina:', page)
+        self.message_box.setText('Finalizado!')
+        self.message_box.show()
+
+    @QtCore.Slot()
+    def generate_db_txt_from_db(self):
         session = Session()
         query = select(Question)
         if self.subject_combobox.currentText() != 'Todas':

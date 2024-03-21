@@ -4,7 +4,7 @@ from cx_Freeze import Executable, setup
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
-    'zip_include_packages': ['PySide6'],
+    'zip_include_packages': ['PySide6', 'pymysql'],
 }
 
 # base="Win32GUI" should be used only for Windows GUI app
